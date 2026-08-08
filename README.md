@@ -54,7 +54,29 @@ Two tiers of development:
 
 ---
 
-## Step-by-step replication
+## Quick start (automated)
+
+After copying the folder to the laptop and installing the prerequisites, one
+script does Steps 2–7 for you:
+
+```powershell
+# Windows / PowerShell
+.\setup.ps1
+```
+```bash
+# macOS / Linux / Git Bash / WSL
+bash setup.sh
+```
+
+It runs preflight checks, creates `.env` (then stops so you can fill in
+credentials — re-run when done), builds the Glue 5.0 image, fetches the GAE libs
+from S3, and runs the license/plugin smoke test. It is idempotent, so re-run it
+any time. Flags: `-Rebuild`/`--rebuild`, `-SkipLibs`/`--skip-libs`,
+`-SkipVerify`/`--skip-verify`.
+
+The manual steps below explain what the script does, for troubleshooting.
+
+## Step-by-step replication (manual)
 
 ### Step 1. Copy the project onto the work laptop
 
