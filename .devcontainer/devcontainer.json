@@ -1,0 +1,28 @@
+{
+  // "Reopen in Container" opens VS Code INSIDE the Glue 5.0 container, so the
+  // Python interpreter, Spark, and GAE are the real ones and breakpoints just
+  // work. This is the recommended way to debug (see .vscode/launch.json).
+  "name": "gae-local-dev",
+  "dockerComposeFile": "../compose.yaml",
+  "service": "gae",
+  "workspaceFolder": "/home/hadoop/workspace",
+  // gae's compose command is `bash` (exits immediately); override so the
+  // container stays alive while you attach VS Code to it.
+  "overrideCommand": true,
+  "remoteUser": "hadoop",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.debugpy",
+        "ms-toolsai.jupyter"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "python3",
+        "python.testing.pytestEnabled": true,
+        "python.testing.pytestArgs": ["tests"],
+        "python.testing.unittestEnabled": false
+      }
+    }
+  }
+}

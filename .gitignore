@@ -1,0 +1,20 @@
+# Secrets
+.env
+
+# GAE libraries (not redistributable — fetched from S3 via scripts/fetch_gae_libs.sh)
+gae_libs/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Spark
+spark-warehouse/
+metastore_db/
+derby.log
+
+# Local outputs
+out/
+*.log

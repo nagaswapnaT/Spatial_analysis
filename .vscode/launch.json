@@ -1,0 +1,53 @@
+{
+  // These run when VS Code is attached INSIDE the container (Dev Containers:
+  // "Reopen in Container"). Set a breakpoint in src/transform.py and press F5.
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug: pytest (current file)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["-q", "${file}"],
+      "cwd": "/home/hadoop/workspace",
+      "env": { "PYTHONPATH": "/home/hadoop/workspace" },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Debug: all tests",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["-q", "tests"],
+      "cwd": "/home/hadoop/workspace",
+      "env": { "PYTHONPATH": "/home/hadoop/workspace" },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Debug: job.py --local",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "src.job",
+      "args": ["--local"],
+      "cwd": "/home/hadoop/workspace",
+      "env": { "PYTHONPATH": "/home/hadoop/workspace" },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      // Fallback for when you are NOT using Dev Containers: run the process
+      // under debugpy in the container, then attach from the host.
+      // See the "Debugging" section of README.md for the launch command.
+      "name": "Attach: debugpy in container (port 5678)",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": { "host": "localhost", "port": 5678 },
+      "pathMappings": [
+        { "localRoot": "${workspaceFolder}", "remoteRoot": "/home/hadoop/workspace" }
+      ],
+      "justMyCode": false
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+# Two services share one image:
+#   gae      -> one-shot runs: pytest, scripts, `python -m src.job`
+#   gae-lab  -> long-running Jupyter Lab for interactive exploration
+#
+# Both mount:
+#   - the project (live code edits, no rebuild)
+#   - ./gae_libs (the GAE jars/zip fetched from S3)
+#   - ~/.aws     (your AWS creds, read-only) so S3 + Glue Catalog work
+
+x-common: &common
+  build: .
+  env_file: .env
+  working_dir: /home/hadoop/workspace
+  volumes:
+    - ./:/home/hadoop/workspace
+    - ./gae_libs:/home/hadoop/workspace/gae_libs
+    - ${HOME}/.aws:/home/hadoop/.aws:ro
+    - ${USERPROFILE:-${HOME}}/.aws:/home/hadoop/.aws:ro
+  environment:
+    - AWS_PROFILE=${AWS_PROFILE:-default}
+    - AWS_REGION=${AWS_REGION:-us-east-1}
+    - PYTHONPATH=/home/hadoop/workspace
+
+services:
+  gae:
+    <<: *common
+    # override the command at call time, e.g.
+    #   docker compose run --rm gae pytest -q
+    #   docker compose run --rm gae python scripts/verify_setup.py
+    command: ["bash"]
+
+  gae-lab:
+    <<: *common
+    command: >
+      jupyter lab --ip=0.0.0.0 --port=8888 --no-browser
+      --ServerApp.token='' --ServerApp.password=''
+      --notebook-dir=/home/hadoop/workspace
+    ports:
+      - "8888:8888"

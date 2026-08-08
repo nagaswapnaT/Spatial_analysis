@@ -1,0 +1,6 @@
+# Dev-only tooling. Do NOT add pyspark/awsglue here — those come from the
+# Glue 5.0 base image and must not be overridden (version must match Glue).
+pytest==8.3.4
+debugpy==1.8.11
+jupyterlab==4.3.4
+pandas==2.2.3
