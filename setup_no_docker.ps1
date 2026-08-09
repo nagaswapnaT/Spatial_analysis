@@ -68,6 +68,14 @@ if (-not (Test-Path $condaExe)) {
   Ok "Miniconda already present at $CondaRoot"
 }
 
+# Newer conda requires accepting Anaconda's Terms of Service for the "defaults"
+# channels before any solve touches them, even if environment.yml only lists
+# conda-forge. Accept non-interactively here so a fresh install doesn't fail;
+# harmless no-op on conda versions without this requirement.
+foreach ($ch in @("main", "r", "msys2")) {
+  & $condaExe tos accept --override-channels --channel "https://repo.anaconda.com/pkgs/$ch" 2>$null | Out-Null
+}
+
 # --- Step 3: create/update the conda environment ------------------------------
 Info "Step 3/5  Creating the '$EnvName' environment (python 3.11, openjdk 17, pyspark 3.5.4)"
 $envList = & $condaExe env list

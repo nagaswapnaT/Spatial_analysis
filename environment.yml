@@ -8,6 +8,11 @@
 name: gae-local-dev
 channels:
   - conda-forge
+  # nodefaults keeps conda from ever touching Anaconda's "defaults" channels
+  # (pkgs/main, pkgs/r, pkgs/msys2) — those now require accepting Anaconda's
+  # Terms of Service non-interactively, which breaks a fresh Miniconda install
+  # otherwise. We don't need them; everything here comes from conda-forge + pip.
+  - nodefaults
 dependencies:
   - python=3.11
   - openjdk=17
