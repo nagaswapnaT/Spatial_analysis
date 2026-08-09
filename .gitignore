@@ -15,6 +15,14 @@ spark-warehouse/
 metastore_db/
 derby.log
 
+# conda: transient pip-requirements file conda writes into cwd during
+# `conda env create/update` when environment.yml has an inline pip section
+condaenv.*.requirements.txt
+
+# Miniconda per-user install directory (setup_no_docker.ps1 installs outside
+# the repo by default, but ignore defensively in case it ever lands here)
+Miniconda3-gae/
+
 # Local outputs
 out/
 *.log

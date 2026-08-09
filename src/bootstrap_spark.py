@@ -39,6 +39,35 @@ def _add_gae_python_zip() -> None:
         sys.path.insert(0, str(zip_path))
 
 
+def _fix_windows_defaults() -> None:
+    """Work around two PySpark-on-Windows issues that don't show up in Glue/Docker.
+
+    1. Spark's RPC layer builds a URL from the machine hostname; a hostname with
+       an underscore (e.g. "Swapna_hari") is an invalid URL and SparkContext
+       init crashes immediately. Forcing SPARK_LOCAL_IP sidesteps hostname
+       resolution entirely.
+    2. PySpark launches worker subprocesses by resolving "python"/"python3" on
+       PATH. If that resolves to a different interpreter than the one running
+       the driver (e.g. a Windows Store Python stub ahead of this env on PATH),
+       the driver<->worker pickle protocol mismatches and the socket pipe
+       between them dies with "Connection reset". Pinning PYSPARK_PYTHON /
+       PYSPARK_DRIVER_PYTHON to sys.executable guarantees they match.
+    """
+    if os.name != "nt":
+        return
+    os.environ.setdefault("SPARK_LOCAL_IP", "127.0.0.1")
+    os.environ.setdefault("PYSPARK_PYTHON", sys.executable)
+    os.environ.setdefault("PYSPARK_DRIVER_PYTHON", sys.executable)
+
+
+# Run at import time, not inside build_spark(): other modules (transform.py,
+# io_glue.py) do a top-level `from geoanalytics.sql import functions as ST`.
+# conftest.py/job.py import bootstrap_spark before those modules, so this must
+# put the GAE zip on sys.path here — waiting until build_spark() runs is too
+# late, since transform.py would already have failed to import by then.
+_add_gae_python_zip()
+
+
 def build_spark(app_name: str = "gae-local-dev", enable_glue_catalog: bool = False) -> SparkSession:
     """Create a GAE-enabled SparkSession.
 
@@ -47,7 +76,7 @@ def build_spark(app_name: str = "gae-local-dev", enable_glue_catalog: bool = Fal
     (needs Glue/Lake Formation read perms on your AWS role). Leave False for
     fixture-only local tests.
     """
-    _add_gae_python_zip()
+    _fix_windows_defaults()
 
     builder = (
         SparkSession.builder.appName(app_name)

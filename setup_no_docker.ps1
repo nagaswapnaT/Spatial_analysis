@@ -119,9 +119,7 @@ if ($SkipVerify) {
 
 Write-Host ""
 Ok "Setup complete - no Docker, no admin rights used."
-Write-Host "Always run through this env's python (it has JAVA_HOME/PYTHONPATH wired):"
-Write-Host "  $envPython -m pytest -q"
-Write-Host "  $envPython -m src.job --local"
-Write-Host ""
-Write-Host "Or open a shell with the env active:"
-Write-Host "  & '$CondaRoot\shell\condabin\conda-hook.ps1'; conda activate '$EnvPrefix'"
+Write-Host "In a new terminal, load the environment first:"
+Write-Host "  . .\activate_no_docker.ps1"
+Write-Host "  & `$py -m pytest -q"
+Write-Host "  & `$py -m src.job --local"
