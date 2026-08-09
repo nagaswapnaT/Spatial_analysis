@@ -25,15 +25,19 @@ tract), refactored into testable pieces.
 | GAE config copied into every notebook | One `bootstrap_spark.py` |
 | License password hardcoded in a cell | Read from `.env` / Secrets Manager |
 
-Two tiers of development:
+Two tiers of development, plus a no-Docker fallback:
 
-- **Tier 1 (this project, ~90% of work):** local Docker container matching Glue
-  5.0. Fast loop on sampled data; can also reach real S3 + Glue Catalog with your
-  mounted AWS credentials.
-- **Tier 2 (validation before shipping):** run the *same* `src/` code through
-  **Glue Interactive Sessions** from VS Code (`aws-glue-sessions` kernel) to
-  confirm catalog/scale behavior on the real backend. See
-  [Tier 2](#tier-2--validate-on-real-glue) below.
+- **Tier 1 (~90% of work):** local Docker container matching Glue 5.0. Fast loop
+  on sampled data; can also reach real S3 + Glue Catalog with your mounted AWS
+  credentials. **Needs admin rights** (Docker Desktop requires WSL2/Hyper‑V).
+- **Tier 0 (no admin rights):** the same fast pytest loop on local fixtures,
+  without Docker — a per-user Miniconda install instead. See
+  [No Docker / no admin rights](#no-docker--no-admin-rights) below. Use this if
+  Tier 1 isn't installable on your laptop.
+- **Tier 2 (validation before shipping, no admin rights needed either):** run the
+  *same* `src/` code through **Glue Interactive Sessions** from VS Code
+  (`aws-glue-sessions` kernel) to confirm catalog/scale behavior on the real
+  backend. See [Tier 2](#tier-2--validate-on-real-glue) below.
 
 ---
 
@@ -176,11 +180,15 @@ gae-local-dev/
 ├── README.md                 <- you are here
 ├── .env.example              <- copy to .env, fill in
 ├── .gitignore
-├── Dockerfile                <- Glue 5.0 base + dev tooling
+├── Dockerfile                <- Glue 5.0 base + dev tooling (Tier 1)
 ├── compose.yaml              <- services: gae (run/test), gae-lab (Jupyter)
+├── environment.yml           <- conda env spec for Tier 0 (no Docker/no admin)
 ├── requirements-dev.txt
+├── setup.ps1 / setup.sh      <- Tier 1 automated setup (Docker)
+├── setup_no_docker.ps1       <- Tier 0 automated setup (per-user Miniconda)
 ├── scripts/
-│   ├── fetch_gae_libs.sh     <- download GAE jars/zip from S3 (once)
+│   ├── fetch_gae_libs.sh     <- download GAE jars/zip from S3 via AWS CLI (Tier 1)
+│   ├── fetch_gae_libs.py     <- same, via boto3, no AWS CLI install (Tier 0)
 │   └── verify_setup.py       <- Spark + GAE plugin + auth + catalog smoke test
 ├── src/
 │   ├── bootstrap_spark.py    <- SparkSession w/ GAE config (replaces %%configure)
@@ -241,6 +249,81 @@ container (port 5678)** config:
 docker compose run --rm -p 5678:5678 gae \
   python -m debugpy --listen 0.0.0.0:5678 --wait-for-client -m src.job --local
 ```
+
+## No Docker / no admin rights
+
+If Docker Desktop won't install (no admin rights to enable WSL2/Hyper‑V), use
+this instead of Steps 1–7 above. It gets you the same fast `pytest` loop on
+local fixtures, with nothing that requires an admin prompt:
+
+```powershell
+.\setup_no_docker.ps1
+```
+
+What it does, and why each piece avoids needing admin rights:
+
+1. Creates `.env` (same as Tier 1) — stops so you can fill in credentials, then
+   re-run.
+2. Downloads and silently installs **Miniconda in `/InstallationType=JustMe`
+   mode** into `%USERPROFILE%\Miniconda3-gae` — a per-user install, no admin
+   elevation prompt, isolated from any other Python on the machine.
+3. Creates a conda env from `environment.yml`: Python 3.11, **Java 17 from
+   conda-forge** (no separate JDK installer needed — Java is normally an admin
+   install on Windows, but conda's `openjdk` package just unpacks into the env
+   folder), and PySpark 3.5.4 (matching Glue 5.0).
+4. Fetches the GAE jars/zip via **`scripts/fetch_gae_libs.py`** (boto3) instead
+   of `fetch_gae_libs.sh` (AWS CLI) — the AWS CLI's Windows installer is an MSI
+   that needs admin rights; boto3 is a plain pip package that reads the exact
+   same `~/.aws` credentials.
+5. Runs `scripts/verify_setup.py` through that env's Python.
+
+Re-run anytime; every step is idempotent. Flags: `-SkipLibs`, `-SkipVerify`.
+
+Afterwards, always invoke things through the env's Python directly (it has
+`JAVA_HOME`/`PYTHONPATH` set correctly), for example:
+
+```powershell
+$py = "$HOME\Miniconda3-gae\envs\gae-local-dev\python.exe"
+& $py -m pytest -q
+& $py -m src.job --local
+```
+
+Or activate it in a shell (add conda to that shell's PATH first):
+
+```powershell
+& "$HOME\Miniconda3-gae\shell\condabin\conda-hook.ps1"
+conda activate "$HOME\Miniconda3-gae\envs\gae-local-dev"
+```
+
+**Known Windows/PySpark gotcha — `winutils.exe`.** Running PySpark natively on
+Windows (i.e. not inside the Linux container) can throw
+`UnsatisfiedLinkError: ... NativeIO$Windows.access0` the first time Spark tries
+to write shuffle/temp files, because Hadoop's Windows file-permission shim
+(`winutils.exe` + `hadoop.dll`) isn't bundled with the pip `pyspark` package. If
+`verify_setup.py` or `pytest` fails with that error:
+
+1. Download a `winutils.exe` + `hadoop.dll` build matching Hadoop 3.3.x (the
+   version PySpark 3.5.4 bundles) — the community-maintained
+   [cdarlint/winutils](https://github.com/cdarlint/winutils) repo is the common
+   source; review it yourself before running anything from it, since it's a
+   third-party binary, not an official Apache release.
+2. Put both files in a folder, e.g. `%USERPROFILE%\hadoop\bin\`.
+3. Set `HADOOP_HOME` to that folder (without `\bin`) and add `\bin` to `PATH`
+   before running Python — e.g. add these two lines near the top of
+   `setup_no_docker.ps1` (after the `JAVA_HOME` block) if you hit this:
+   ```powershell
+   $env:HADOOP_HOME = "$HOME\hadoop"
+   $env:PATH = "$($env:HADOOP_HOME)\bin;$env:PATH"
+   ```
+
+**What Tier 0 does *not* cover:** reading real S3 data directly with
+`spark.read` from a local, non-Glue PySpark requires extra `hadoop-aws` /
+`aws-java-sdk-bundle` jars that the Glue container ships but a plain `pip
+pyspark` install doesn't — and pulling them via Spark's `--packages` needs
+Maven Central reachability, which a locked-down corporate network may block.
+Rather than fight that, do S3/Catalog validation through **Tier 2** below,
+which runs on the real Glue backend in the cloud and needs nothing local beyond
+`pip install`.
 
 ## Tier 2 — validate on real Glue
 

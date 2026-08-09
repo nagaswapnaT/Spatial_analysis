@@ -1,0 +1,21 @@
+# Conda environment for the no-Docker / no-admin-rights setup (setup_no_docker.ps1).
+# Installs entirely under your user profile — no admin rights needed.
+#
+# Matches AWS Glue 5.0 as closely as a non-Docker setup can: Python 3.11,
+# Java 17, PySpark 3.5.4. (Scala/Hadoop native bits still come from the GAE
+# jars + PySpark's bundled Hadoop client — see README's "No Docker" section
+# for the one Windows-specific gotcha: winutils.exe.)
+name: gae-local-dev
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - openjdk=17
+  - pip
+  - pip:
+      - pyspark==3.5.4
+      - pytest==8.3.4
+      - boto3==1.35.71
+      - jupyterlab==4.3.4
+      - pandas==2.2.3
+      - debugpy==1.8.11
